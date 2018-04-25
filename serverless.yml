@@ -10,7 +10,6 @@ provider:
   runtime: python3.6
   stage: dev
   region: us-east-2
-  tracing: true
 
   # IAM role for all functions
   iamRoleStatements:
@@ -27,11 +26,6 @@ provider:
       Resource: 
         - "arn:aws:ssm:${self:provider.region}:#{AWS::AccountId}:parameter/twitter.${opt:stage, self:provider.stage}.*"
         - "arn:aws:ssm:${self:provider.region}:#{AWS::AccountId}:parameter/bitly.${opt:stage, self:provider.stage}.*"
-    - Effect: Allow
-      Action:
-        - "xray:PutTraceSegments"
-        - "xray:PutTelemetryRecords"
-      Resource: "*"
 
   # Environment variables for all functions
   environment:
