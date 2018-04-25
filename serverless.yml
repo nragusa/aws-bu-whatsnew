@@ -62,8 +62,6 @@ functions:
       - schedule: cron(0 12 * * ? *) # Daily at 8 AM EDT
       - schedule: cron(0 16 * * ? *) # Daily at 12 PM EDT
       - schedule: cron(0 20 * * ? *) # Daily at 4 PM EDT
-    environment:
-      my_hashtag: NickLovesECS
 
 # Cloudformation Resources
 resources:
