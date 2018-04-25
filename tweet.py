@@ -22,12 +22,13 @@ DYNAMODB_TABLE = os.environ['dynamodb_table']
 BU_HASHTAG = os.environ['bu_hashtag']
 MY_HASHTAG = os.environ.get('my_hashtag', 'MyFirstNameLovesECS')
 
+
 def shorten_url(url):
     # Get bitly login and API key from secrets manager
     BITLY_LOGIN = os.environ['bitly_login']
     BITLY_API_KEY = os.environ['bitly_api_key']
     if(os.environ.get('BITLY_LOGIN_VALUE', None) and
-        os.environ.get('BITLY_API_KEY_VALUE', None)):
+            os.environ.get('BITLY_API_KEY_VALUE', None)):
         # Values are cached - used those
         bitly_login = os.environ['BITLY_LOGIN_VALUE']
         bitly_api_key = os.environ['BITLY_API_KEY_VALUE']
@@ -48,7 +49,7 @@ def shorten_url(url):
         except KeyError as error:
             print('Value not returned from Parameter Store API')
             return ''
-    
+
     # Now that we have the secrets, call the bitly service
     try:
         params = urllib.parse.urlencode({
@@ -68,13 +69,14 @@ def shorten_url(url):
         return data['url']
     return ''
 
+
 def tweet(title, short_url):
     # Get the name of the parameters stored in SSM from the environment variables
     CONSUMER_KEY = os.environ['consumer_key']
     CONSUMER_SECRET = os.environ['consumer_secret']
     ACCESS_TOKEN = os.environ['access_token']
     ACCESS_SECRET = os.environ['access_secret']
-    
+
     tweet = '{} #{} #{} {}'.format(title, BU_HASHTAG, MY_HASHTAG, short_url)
     if len(tweet) > 280:
         # Shorten title by the length of the mandatory text in tweet
@@ -145,13 +147,17 @@ def main(event, context):
     # Create a DynamoDB client
     ddb = boto3.resource('dynamodb')
     table = ddb.Table(DYNAMODB_TABLE)
-    
+    tweeted_once = False
+
     # Iterate over the RSS feed
     for entry in d['entries']:
+        if tweeted_once:
+            break
         try:
             url = entry['link']
-            title = re.sub(' +', ' ', entry['title']) # Remove extra whitespace
-            title = html.unescape(title) # Remove HTML elements
+            # Remove extra whitespace
+            title = re.sub(' +', ' ', entry['title'])
+            title = html.unescape(title)  # Remove HTML elements
             query_response = table.query(
                 KeyConditionExpression=Key('url').eq(url)
             )
@@ -173,12 +179,14 @@ def main(event, context):
                         status=tweet_response['status'],
                         created=tweet_response['created']
                     )
-                    print(json.dumps(item)) # Print debug info
+                    print(json.dumps(item))  # Print debug info
                     put_repsonse = table.put_item(
                         Item=item
                     )
                 except ClientError as error:
                     print('Problem putting item into DynamoDB: {}'.format(error))
+                else:
+                    tweeted_once = True
             else:
                 # Event already in table
                 pass
