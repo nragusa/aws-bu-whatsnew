@@ -1,0 +1,95 @@
+# For full config options, check the docs:
+#    docs.serverless.com
+
+# Service name
+service: bu-whatsnew
+
+provider:
+  # Global defaults
+  name: aws
+  runtime: python3.6
+  stage: dev
+  region: us-east-2
+  tracing: true
+
+  # IAM role for all functions
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "dynamodb:PutItem"
+        - "dynamodb:Query"
+      Resource:
+        Fn::GetAtt: [ BUFeedTable, Arn ]
+    - Effect: "Allow"
+      Action:
+        - "ssm:GetParameters"
+        - "ssm:GetParameter"
+      Resource: 
+        - "arn:aws:ssm:${self:provider.region}:#{AWS::AccountId}:parameter/twitter.${opt:stage, self:provider.stage}.*"
+        - "arn:aws:ssm:${self:provider.region}:#{AWS::AccountId}:parameter/bitly.${opt:stage, self:provider.stage}.*"
+    - Effect: Allow
+      Action:
+        - "xray:PutTraceSegments"
+        - "xray:PutTelemetryRecords"
+      Resource: "*"
+
+  # Environment variables for all functions
+  environment:
+    feedurl: http://www.bu.edu/phpbin/calendar/rss.php
+    dynamodb_table: ${self:service}-${opt:stage, self:provider.stage}
+    bu_hashtag: BUWhatsNew
+    stage: ${opt:stage, self:provider.stage}
+    consumer_key: twitter.${opt:stage, self:provider.stage}.consumer.key
+    consumer_secret: twitter.${opt:stage, self:provider.stage}.consumer.secret
+    access_token: twitter.${opt:stage, self:provider.stage}.access.token
+    access_secret: twitter.${opt:stage, self:provider.stage}.access.secret
+    bitly_login: bitly.${opt:stage, self:provider.stage}.login
+    bitly_api_key: bitly.${opt:stage, self:provider.stage}.api.key
+
+# Include / exclude deployment specific assets
+package:
+  exclude:
+    - venv/**
+
+plugins:
+  - serverless-plugin-tracing
+  - serverless-pseudo-parameters
+
+functions:
+  tweet:
+    name: ${self:service}-${opt:stage, self:provider.stage}
+    description: Pulls the latest events from the BU event calendar and tweets them
+    handler: tweet.main
+    memorySize: 128
+    timeout: 30
+    tags:
+      service: ${self:service}
+    events:
+      - schedule: cron(0 12 * * ? *) # Daily at 8 AM EDT
+      - schedule: cron(0 16 * * ? *) # Daily at 12 PM EDT
+      - schedule: cron(0 20 * * ? *) # Daily at 4 PM EDT
+    environment:
+      my_hashtag: NickLovesECS
+
+# Cloudformation Resources
+resources:
+  Resources:
+    BUFeedTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${opt:stage, self:provider.stage}
+        KeySchema:
+          - AttributeName: url
+            KeyType: HASH
+        AttributeDefinitions:
+          - AttributeName: url
+            AttributeType: S
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        Tags:
+          - Key: service
+            Value: ${self:service}
+          - Key: stage
+            Value: ${opt:stage, self:provider.stage}
+
