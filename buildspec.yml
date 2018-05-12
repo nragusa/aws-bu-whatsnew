@@ -9,4 +9,4 @@ phases:
       - npm install --save-dev serverless-pseudo-parameters
   build:
     commands:
-      - serverless deploy --stage $STAGE --region $AWS_REGION | tee deploy.out 
+      - serverless deploy -v --stage $STAGE --region $AWS_REGION | tee deploy.out 
