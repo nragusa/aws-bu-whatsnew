@@ -1,0 +1,12 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - npm install
+      - npm install -g serverless
+      - npm install --save-dev serverless-plugin-tracing
+      - npm install -g serverless-pseudo-parameters
+  build:
+    commands:
+      - serverless deploy --stage $STAGE --region $AWS_REGION | tee deploy.out 
